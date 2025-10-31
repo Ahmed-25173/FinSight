@@ -1,0 +1,227 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Portfolio - FinSight</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #0a0f1c;
+      color: #eaecef;
+      overflow-x: hidden;
+      text-align: center;
+    }
+
+    nav {
+      background: transparent !important;
+      position: absolute;
+      width: 100%;
+      top: 0;
+      z-index: 10;
+      padding: 15px 40px;
+    }
+
+    .brand {
+      color: #1e90ff;
+      font-weight: bold;
+      font-size: 1.6rem;
+      float: left;
+    }
+
+    .btn-custom {
+      background-color: #0b5ed7;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-weight: 500;
+      padding: 7px 18px;
+      margin-left: 10px;
+      text-decoration: none;
+      display: inline-block;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .btn-custom:hover {
+      background-color: #3c83f6;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(30, 144, 255, 0.4);
+      color: white;
+    }
+
+    nav form {
+      background: transparent !important;
+      margin: 0;
+      padding: 0;
+      display: inline-block;
+      box-shadow: none !important;
+    }
+
+    select.custom-select {
+      background-color: #0b5ed7;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-weight: 500;
+      padding: 7px 18px;
+      margin-left: 10px;
+      margin-right: 10px;
+      height: 38px;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    select.custom-select:hover {
+      background-color: #3c83f6;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(30, 144, 255, 0.4);
+    }
+    select.custom-select option {
+      background-color: white;
+      color: black;
+    }
+
+    main {
+      margin-top: 120px;
+      padding: 60px 10%;
+    }
+
+    h2 {
+      color: #1e90ff;
+      font-weight: 700;
+      margin-bottom: 30px;
+    }
+
+    form {
+      max-width: 600px;
+      margin: auto;
+      background: #101a2b;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(11, 94, 215, 0.2);
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin-top: 15px;
+      font-weight: 500;
+      color: #b7bdc6;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      margin-top: 5px;
+      background: #13294b;
+      color: #eaecef;
+    }
+
+    button {
+      background-color: #0b5ed7;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 10px 25px;
+      margin-top: 25px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    button:hover {
+      background-color: #3c83f6;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(11, 94, 215, 0.3);
+    }
+
+    a.back-link {
+      color: #1e90ff;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 25px;
+      font-weight: 500;
+    }
+    a.back-link:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      background: linear-gradient(135deg, #04070f, #1a2238);
+      color: #aeb7c4;
+      text-align: center;
+      padding: 25px 0;
+      font-size: 0.9rem;
+      border-top: 1px solid #2c3550;
+      margin-top: 100px;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="d-flex justify-content-between align-items-center">
+    <div class="brand">FinSight</div>
+    <div class="d-flex align-items-center">
+      {% if request.user.is_authenticated %}
+        <form action="#" method="post" class="d-inline">
+          <select class="custom-select" name="portfolio_action"
+            onchange="if(this.value) window.location.href=this.value;">
+            <option selected disabled>Portfolio</option>
+            {% if request.user.portfolio %}
+              <option value="{% url 'viewPortfolio' %}">View Portfolio</option>
+              <option value="{% url 'updatePortfolio' %}">Update Portfolio</option>
+              <option value="{% url 'deletePortfolio' %}">Delete Portfolio</option>
+            {% else %}
+              <option value="{% url 'createPortfolio' %}">Create Portfolio</option>
+            {% endif %}
+          </select>
+        </form>
+        <a href="{% url 'changepassword' %}" class="btn-custom">Change Password</a>
+        <a href="{% url 'logout' %}" class="btn-custom">Logout</a>
+        <a href="{% url 'update_profile' %}" class="btn-custom">Update Profile</a>
+        <a href="{% url 'home' %}" class="btn-custom">Home</a>
+      {% else %}
+        <a href="{% url 'login' %}" class="btn-custom">Login</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main>
+    <h2>Create Portfolio</h2>
+    <form method="POST" action="{% url 'createPortfolio' %}">
+      {% csrf_token %}
+      <label>Name</label>
+      <input type="text" name="name" required>
+
+      <label>Description</label>
+      <textarea name="description"></textarea>
+
+      <label>Initial Investment</label>
+      <input type="number" step="0.01" name="initialInvestment" required>
+
+
+      <label>Cash Balance</label>
+      <input type="number" step="0.01" name="cashBalance" value="0">
+
+      <label>Risk Tolerance</label>
+      <select name="riskTolerance" required>
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
+
+      <label>Investment Goal</label>
+      <input type="text" name="investmentGoal" required>
+
+      <button type="submit">Create Portfolio</button>
+    </form>
+  </main>
+
+  <footer>
+    © 2025 FinSight. All rights reserved.
+  </footer>
+</body>
+</html>

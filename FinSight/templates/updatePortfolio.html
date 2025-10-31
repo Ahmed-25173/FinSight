@@ -1,0 +1,242 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Update Portfolio - FinSight</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #0a0f1c;
+            color: #eaecef;
+            overflow-x: hidden;
+            text-align: center;
+        }
+
+        nav {
+            background: transparent !important;
+            position: absolute;
+            width: 100%;
+            top: 0;
+            z-index: 10;
+            padding: 15px 40px;
+        }
+
+        .brand {
+            color: #1e90ff;
+            font-weight: bold;
+            font-size: 1.6rem;
+            float: left;
+        }
+
+        .btn-custom {
+            background-color: #0b5ed7;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-weight: 500;
+            padding: 7px 18px;
+            margin-left: 8px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            background-color: #3c83f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(30, 144, 255, 0.4);
+            color: white;
+        }
+
+        .btn-white {
+            background-color: white;
+            color: #0b5ed7;
+            border: none;
+            border-radius: 20px;
+            font-weight: 600;
+            padding: 10px 25px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .btn-white:hover {
+            background-color: #f3f7ff;
+            color: #0b5ed7;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(11, 94, 215, 0.3);
+        }
+
+        select.custom-select {
+            background-color: #0b5ed7;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-weight: 500;
+            padding: 7px 18px;
+            margin-left: 8px;
+            height: 38px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='12' width='12' xmlns='http://www.w3.org/2000/svg'><path d='M2 4l4 4 4-4z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 12px;
+            padding-right: 30px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        select.custom-select:hover {
+            background-color: #3c83f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(30, 144, 255, 0.4);
+        }
+
+        select.custom-select option {
+            background-color: white;
+            color: black;
+        }
+
+        main {
+            margin-top: 120px;
+            padding: 60px 10%;
+        }
+
+        .portfolio-form {
+            background-color: #101a2b;
+            padding: 40px;
+            border-radius: 12px;
+            max-width: 700px;
+            margin: auto;
+            box-shadow: 0 4px 20px rgba(11, 94, 215, 0.4);
+        }
+
+        .portfolio-form h2 {
+            color: #1e90ff;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+
+        .portfolio-form input,
+        .portfolio-form select,
+        .portfolio-form textarea {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border: none;
+            background-color: #13294b;
+            color: #eaecef;
+            font-size: 1rem;
+        }
+
+        .portfolio-form input:focus,
+        .portfolio-form select:focus,
+        .portfolio-form textarea:focus {
+            outline: none;
+            box-shadow: 0 0 8px rgba(11, 94, 215, 0.6);
+        }
+
+        .portfolio-form button {
+            background-color: #0b5ed7;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .portfolio-form button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(11, 94, 215, 0.5);
+        }
+
+        footer {
+            background: linear-gradient(135deg, #04070f, #1a2238);
+            color: #aeb7c4;
+            text-align: center;
+            padding: 25px 0;
+            font-size: 0.9rem;
+            border-top: 1px solid #2c3550;
+            margin-top: 60px;
+        }
+
+        .portfolio-image {
+            margin-bottom: 30px;
+            max-width: 100%;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="d-flex justify-content-between align-items-center">
+        <div class="brand">FinSight</div>
+        <div class="d-flex align-items-center">
+            {% if request.user.is_authenticated %}
+            <form action="#" method="post" class="d-inline">
+                <select class="custom-select" name="portfolio_action"
+                    onchange="if(this.value) window.location.href=this.value;">
+                    <option selected disabled>Portfolio</option>
+                    {% if request.user.portfolio %}
+                    <option value="{% url 'viewPortfolio' %}">View Portfolio</option>
+                    <option value="{% url 'updatePortfolio' %}">Update Portfolio</option>
+                    <option value="{% url 'deletePortfolio' %}">Delete Portfolio</option>
+                    {% else %}
+                    <option value="{% url 'createPortfolio' %}">Create Portfolio</option>
+                    {% endif %}
+                </select>
+            </form>
+            <a href="{% url 'changepassword' %}" class="btn-custom">Change Password</a>
+            <a href="{% url 'logout' %}" class="btn-custom">Logout</a>
+            <a href="{% url 'update_profile' %}" class="btn-custom">Update Profile</a>
+            <a href="{% url 'home' %}">Home</a>
+            {% else %}
+            <a href="{% url 'login' %}" class="btn-custom">Login</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main>
+        <div class="portfolio-form">
+            <h2>Update Portfolio: {{ portfolio.name }}</h2>
+           
+            <form method="post" action="{% url 'updatePortfolio' %}">
+                {% csrf_token %}
+                <input type="text" name="name" placeholder="Portfolio Name" value="{{ portfolio.name }}" required>
+                <input type="number" name="initialInvestment" placeholder="Initial Investment"
+                    value="{{ portfolio.initialInvestment }}" required>
+                <input type="number" name="cashBalance" placeholder="Cash Balance" value="{{ portfolio.cashBalance }}"
+                    required>
+                <select name="riskTolerance" required>
+                    <option disabled {% if not portfolio.riskTolerance %}selected{% endif %}>Select Risk Tolerance
+                    </option>
+                    <option value="Low" {% if portfolio.riskTolerance == 'Low' %}selected{% endif %}>Low</option>
+                    <option value="Medium" {% if portfolio.riskTolerance == 'Medium' %}selected{% endif %}>Medium
+                    </option>
+                    <option value="High" {% if portfolio.riskTolerance == 'High' %}selected{% endif %}>High</option>
+                </select>
+                <textarea name="investmentGoal" placeholder="Investment Goal"
+                    rows="4">{{ portfolio.investmentGoal }}</textarea>
+                <textarea name="description" placeholder="Description"
+                    rows="4">{{ portfolio.description }}</textarea>
+                <button type="submit">Update Portfolio</button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        © 2025 FinSight. All rights reserved.
+    </footer>
+</body>
+
+</html>
