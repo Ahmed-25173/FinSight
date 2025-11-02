@@ -64,7 +64,6 @@
       box-shadow: 0 4px 10px rgba(11, 94, 215, 0.3);
     }
 
-    /* Portfolio dropdown — now same color as other navbar buttons */
     select.custom-select {
       background-color: #0b5ed7;
       color: white;
@@ -200,8 +199,16 @@
         <a href="{% url 'changepassword' %}" class="btn-custom">Change Password</a>
         <a href="{% url 'logout' %}" class="btn-custom">Logout</a>
         <a href="{% url 'update_profile' %}" class="btn-custom">Update Profile</a>
+          <a href="{% url 'signup' %}" class="btn-custom">Signup</a>
+          <a href="{% url 'addTransaction' %}" class="btn-custom">Add Transaction</a>
+<a href="{% url 'viewTransactions' %}" class="btn-custom">View Transactions</a>
+
+            
+
       {% else %}
         <a href="{% url 'login' %}" class="btn-custom">Login</a>
+            <a href="{% url 'signup' %}" class="btn-custom">Signup</a>
+
       {% endif %}
     </div>
   </nav>

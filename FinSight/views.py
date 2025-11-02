@@ -2,29 +2,24 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .models import MainUser
-from .models import Portfolio
-
+from .models import MainUser, Portfolio, Transaction
+from decimal import Decimal
 
 
 
 @login_required
-def Home(request):
-    return render(request,'home.html')
-
-
-
-
+def home(request):
+    return render(request, 'home.html')
 
 
 def userSignup(request):
     if request.method == "POST":
         data = request.POST
-        fname = data.get('firstname')
+        firstName = data.get('firstname')
         number = data.get('number')
         country = data.get('country')
         balance = data.get('balance')
-        uname = data.get('username')
+        userName = data.get('username')
         email = data.get('email')
         password1 = data.get('password1')
         password2 = data.get('password2')
@@ -37,15 +32,15 @@ def userSignup(request):
             messages.error(request, 'Email already exists.')
             return redirect('signup')
 
-        if MainUser.objects.filter(username=uname).exists():
+        if MainUser.objects.filter(username=userName).exists():
             messages.error(request, 'Username already exists.')
             return redirect('signup')
 
         user = MainUser.objects.create_user(
-            username=uname,
+            username=userName,
             email=email,
             password=password1,
-            name=fname,
+            name=firstName,
             number=number,
             country=country,
             balance=balance
@@ -56,33 +51,20 @@ def userSignup(request):
     return render(request, 'signup.html')
 
 
-
-
-def Login(request):
+def loginView(request):
     if request.method == "POST":
-        data = request.POST
-        email = data.get('email')
-        password = data.get('password')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
 
-        try:
-            user = MainUser.objects.get(email=email)
-        except MainUser.DoesNotExist:
-            messages.error(request, 'User not found.')
-            return redirect('login')
-
-        auth = authenticate(request, username=email, password=password)
-        if auth is None:
+        user = authenticate(request, username=email, password=password)  
+        if user is not None:
+            login(request, user) 
+            return redirect('home')
+        else:
             messages.error(request, 'Invalid email or password.')
             return redirect('login')
 
-        
-        login(request, auth)
-        return redirect('home')
-        
-
     return render(request, 'login.html')
-
-
 
 
 
@@ -92,17 +74,14 @@ def logoutView(request):
     return redirect('home')
 
 
-
 @login_required
-def update_profile(request):
+def updateProfile(request):
     user = request.user
-
     if request.method == 'POST':
         number = request.POST.get('number')
         balance = request.POST.get('balance')
         country = request.POST.get('country')
 
-       
         user.number = number
         user.balance = balance if balance else 0
         user.country = country
@@ -112,7 +91,6 @@ def update_profile(request):
         return redirect('update_profile')
 
     return render(request, 'update_profile.html', {'user': user})
-
 
 
 @login_required
@@ -153,12 +131,10 @@ def viewPortfolio(request):
 @login_required
 def updatePortfolio(request):
     portfolio = get_object_or_404(Portfolio, user=request.user)
-
     if request.method == "POST":
         portfolio.name = request.POST.get('name')
         portfolio.description = request.POST.get('description')
         portfolio.initialInvestment = request.POST.get('initialInvestment')
-        portfolio.currentValue = request.POST.get('currentValue')
         portfolio.cashBalance = request.POST.get('cashBalance')
         portfolio.riskTolerance = request.POST.get('riskTolerance')
         portfolio.investmentGoal = request.POST.get('investmentGoal')
@@ -172,12 +148,10 @@ def updatePortfolio(request):
 @login_required
 def deletePortfolio(request):
     portfolio = get_object_or_404(Portfolio, user=request.user)
-
     if request.method == "POST":
         portfolio.delete()
         messages.success(request, "Portfolio deleted successfully!")
         return redirect('home')
-
     return render(request, 'deletePortfolio.html', {'portfolio': portfolio})
 
 
@@ -187,3 +161,96 @@ def deletePortfolio(request):
 
 
 
+
+
+@login_required
+def addTransaction(request):
+    portfolio = get_object_or_404(Portfolio, user=request.user)
+    
+    if request.method == "POST":
+        stockSymbol = request.POST.get('stockSymbol')
+        stockName = request.POST.get('stockName')
+        transactionType = request.POST.get('transactionType')
+        shareQuant = int(request.POST.get('quantity'))
+        pricePerShare = Decimal(request.POST.get('pricePerShare')) 
+        note = request.POST.get('note', '')
+
+        totalPrice = Decimal(shareQuant) * pricePerShare
+
+    
+        if transactionType == "Sell":
+            ownedShares = Transaction.getOwnedShares(portfolio, stockSymbol)
+            if ownedShares <= 0:
+                messages.error(request, f"You don’t own any {stockSymbol} shares to sell.")
+                return redirect('addTransaction')
+            if shareQuant > ownedShares:
+                messages.error(request, f"You can only sell up to {ownedShares} shares of {stockSymbol}.")
+                return redirect('addTransaction')
+        
+        elif transactionType == "Buy":
+            if totalPrice > portfolio.cashBalance:
+                messages.error(request, f"Insufficient cash balance to buy {shareQuant} shares of {stockSymbol}.")
+                return redirect('addTransaction')
+
+        Transaction.objects.create(
+            portfolio=portfolio,
+            stockSymbol=stockSymbol,
+            stockName=stockName,
+            transactionType=transactionType,
+            quantity=shareQuant,
+            pricePerShare=pricePerShare,
+            totalPrice=totalPrice,
+            note=note
+        )
+
+        if transactionType == "Buy":
+            portfolio.cashBalance -= totalPrice
+        elif transactionType == "Sell":
+            portfolio.cashBalance += totalPrice
+        portfolio.save()
+
+        messages.success(request, f"{transactionType} transaction for {stockSymbol} added successfully.")
+        return redirect('viewTransactions')
+
+    return render(request, 'addTransaction.html', {'portfolio': portfolio})
+
+
+
+
+
+
+
+
+
+@login_required
+def viewTransactions(request):
+    portfolio = get_object_or_404(Portfolio, user=request.user)
+    transactions = Transaction.objects.filter(portfolio=portfolio).order_by('-date')
+    return render(request, 'viewTransactions.html', {'transactions': transactions})
+
+
+@login_required
+def updateTransaction(request, id):
+    transaction = get_object_or_404(Transaction, id=id, portfolio__user=request.user)
+    if request.method == "POST":
+        transaction.stockSymbol = request.POST.get('stockSymbol')
+        transaction.stockName = request.POST.get('stockName')
+        transaction.transactionType = request.POST.get('transactionType')
+        transaction.quantity = int(request.POST.get('quantity'))
+        transaction.pricePerShare = float(request.POST.get('pricePerShare'))
+        transaction.note = request.POST.get('note', '')
+        transaction.totalPrice = transaction.quantity * transaction.pricePerShare
+        transaction.save()
+        messages.success(request, "Transaction updated successfully!")
+        return redirect('viewTransactions')
+    return render(request, 'updateTransaction.html', {'transaction': transaction})
+
+
+@login_required
+def deleteTransaction(request, id):
+    transaction = get_object_or_404(Transaction, id=id, portfolio__user=request.user)
+    if request.method == "POST":
+        transaction.delete()
+        messages.success(request, "Transaction deleted successfully!")
+        return redirect('viewTransactions')
+    return render(request, 'deleteTransaction.html', {'transaction': transaction})
