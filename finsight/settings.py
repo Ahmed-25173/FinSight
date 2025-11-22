@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'FinSight',
+    "django_crontab",
+
 ]
 
 MIDDLEWARE = [
@@ -130,4 +132,37 @@ LOGIN_URL = '/login/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+ALPHA_VANTAGE_API_KEY = "792J050IX3L8XNTD"
+
+
+CRONJOBS = [
+    ('0 6 * * *', 'FinSight.stock_api.fetch_and_cache_all_prices'),
+    ('0 18 * * *', 'FinSight.stock_api.fetch_and_cache_all_prices'),
+ 
+]
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'stock_api.log',
+            'level': 'INFO',
+        },
+    },
+    'loggers': {
+        'FinSight': {  # replace with your app name
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
+
 

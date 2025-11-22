@@ -1,0 +1,43 @@
+Failed to update price for AAPL: No daily time series data returned for AAPL
+Traceback (most recent call last):
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 88, in fetch_and_cache_all_prices
+    price, refreshed_at, raw = fetch_latest_price_for_symbol(symbol_upper)
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 54, in fetch_latest_price_for_symbol
+    raise ValueError(f"No daily time series data returned for {symbol}")
+ValueError: No daily time series data returned for AAPL
+Failed to update price for IBM: No daily time series data returned for IBM
+Traceback (most recent call last):
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 88, in fetch_and_cache_all_prices
+    price, refreshed_at, raw = fetch_latest_price_for_symbol(symbol_upper)
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 54, in fetch_latest_price_for_symbol
+    raise ValueError(f"No daily time series data returned for {symbol}")
+ValueError: No daily time series data returned for IBM
+Failed to update price for MSFT: No daily time series data returned for MSFT
+Traceback (most recent call last):
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 88, in fetch_and_cache_all_prices
+    price, refreshed_at, raw = fetch_latest_price_for_symbol(symbol_upper)
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 54, in fetch_latest_price_for_symbol
+    raise ValueError(f"No daily time series data returned for {symbol}")
+ValueError: No daily time series data returned for MSFT
+Failed to update price for SPACEX: No daily time series data returned for SPACEX
+Traceback (most recent call last):
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 88, in fetch_and_cache_all_prices
+    price, refreshed_at, raw = fetch_latest_price_for_symbol(symbol_upper)
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 54, in fetch_latest_price_for_symbol
+    raise ValueError(f"No daily time series data returned for {symbol}")
+ValueError: No daily time series data returned for SPACEX
+Failed to update price for TSLA: No daily time series data returned for TSLA
+Traceback (most recent call last):
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 88, in fetch_and_cache_all_prices
+    price, refreshed_at, raw = fetch_latest_price_for_symbol(symbol_upper)
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ahmedtufail/FinSight/FinSight/stock_api.py", line 54, in fetch_latest_price_for_symbol
+    raise ValueError(f"No daily time series data returned for {symbol}")
+ValueError: No daily time series data returned for TSLA
+Completed fetch_and_cache_all_prices
+Failed to fetch price for SPACEX: No quote data returned for SPACEX: {'Global Quote': {}}
+Failed to fetch price for SPACEX: No quote data returned for SPACEX: {'Global Quote': {}}

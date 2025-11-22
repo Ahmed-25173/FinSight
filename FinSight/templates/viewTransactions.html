@@ -40,27 +40,24 @@
             gap: 12px;
         }
 
-        .btn-custom {
+        .btn-custom, .btn-download {
             background-color: #0b5ed7;
             color: white;
-            border: none;
             border-radius: 20px;
-            font-weight: 500;
             padding: 7px 18px;
-            cursor: pointer;
+            font-weight: 500;
+            transition: .3s;
             text-decoration: none;
-            transition: transform 0.3s, box-shadow 0.3s;
         }
 
-        .btn-custom:hover {
+        .btn-custom:hover, .btn-download:hover {
             background-color: #3c83f6;
             transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(30,144,255,0.4);
         }
 
         .container {
             width: 90%;
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 120px auto 100px auto;
             background: #101a2b;
             padding: 25px;
@@ -68,106 +65,42 @@
             box-shadow: 0 0 20px rgba(30,144,255,0.2);
         }
 
-        h2 {
-            text-align: center;
-            color: #1e90ff;
-            margin-bottom: 25px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 14px;
-        }
-
-        th, td {
-            padding: 12px 10px;
-            text-align: center;
-        }
-
-        thead th {
-            background-color: #13294b;
-            color: #eaecef;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        tbody td {
-            background-color: #0d1528;
-            color: #eaecef;
-            border-bottom: 1px solid #1a2238;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        tbody tr:hover td {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(30,144,255,0.3);
-        }
-
-        tbody tr:nth-child(even) td {
-            background-color: #101a2b;
-        }
-
-        td:last-child {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-action {
-            padding: 5px 12px;
-            font-size: 13px;
-            border-radius: 15px;
-            font-weight: 500;
-            text-decoration: none;
-            transition: transform 0.2s;
-        }
-
-        .btn-edit {
-            background-color: #ffc107;
-            color: #101a2b;
-        }
-
-        .btn-edit:hover {
-            background-color: #ffcd39;
-        }
-
-        .btn-delete {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .btn-delete:hover {
-            background-color: #ff5b6b;
-        }
-
-        footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
+        .filter-box {
+            background: #0d1528;
             padding: 15px;
-            background-color: #101a2b;
-            color: #eaecef;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            text-align: left;
         }
 
-        @media (max-width: 768px) {
-            table {
-                font-size: 12px;
-            }
-
-            th, td {
-                padding: 8px;
-            }
-
-            .btn-action {
-                padding: 4px 8px;
-                font-size: 12px;
-            }
+        label {
+            color: #1e90ff;
+            font-weight: 600;
         }
+
+        input, select {
+            background: #13294b;
+            border: none;
+            color: white;
+            border-radius: 8px;
+            padding: 6px 10px;
+            width: 100%;
+        }
+
+        .filter-btn {
+            background: #1e90ff;
+            border: none;
+            color: white;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        table { width: 100%; }
+        th { background-color: #13294b; }
+        tbody tr:nth-child(even) td { background-color: #101a2b; }
     </style>
 </head>
 <body>
@@ -177,12 +110,46 @@
     <div class="nav-links">
         <a href="{% url 'addTransaction' %}" class="btn-custom">Add Transaction</a>
         <a href="{% url 'home' %}" class="btn-custom">Home</a>
+        <a href="{% url 'downloadTransactionsCSV' %}?type={{ selected_type }}&symbol={{ symbol }}&start={{ start_date }}&end={{ end_date }}" class="btn-download">Download CSV</a>
     </div>
 </nav>
 
 <div class="container">
+
     <h2>Transaction History</h2>
 
+    <!-- FILTER FORM -->
+    <form method="get" class="filter-box row g-3">
+        <div class="col-md-3">
+            <label>Transaction Type</label>
+            <select name="type">
+                <option value="All" {% if selected_type == "All" %}selected{% endif %}>All</option>
+                <option value="Buy" {% if selected_type == "Buy" %}selected{% endif %}>Buy</option>
+                <option value="Sell" {% if selected_type == "Sell" %}selected{% endif %}>Sell</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label>Stock Symbol</label>
+            <input type="text" name="symbol" value="{{ symbol }}" placeholder="e.g. AAPL">
+        </div>
+
+        <div class="col-md-3">
+            <label>Start Date</label>
+            <input type="date" name="start" value="{{ start_date }}">
+        </div>
+
+        <div class="col-md-3">
+            <label>End Date</label>
+            <input type="date" name="end" value="{{ end_date }}">
+        </div>
+
+        <div class="col-md-12">
+            <button type="submit" class="filter-btn">Apply Filters</button>
+        </div>
+    </form>
+
+    <!-- TABLE -->
     <table>
         <thead>
             <tr>
@@ -197,6 +164,7 @@
                 <th>Actions</th>
             </tr>
         </thead>
+
         <tbody>
             {% for t in transactions %}
             <tr>
@@ -208,18 +176,18 @@
                 <td>${{ t.pricePerShare }}</td>
                 <td>${{ t.totalPrice }}</td>
                 <td>{{ t.note }}</td>
+
                 <td>
-                    <a href="{% url 'updateTransaction' t.id %}" class="btn-action btn-edit">Edit</a>
-                    <a href="{% url 'deleteTransaction' t.id %}" class="btn-action btn-delete">Delete</a>
+                    <a href="{% url 'updateTransaction' t.id %}" class="btn btn-warning btn-sm">Edit</a>
+                    <a href="{% url 'deleteTransaction' t.id %}" class="btn btn-danger btn-sm">Delete</a>
                 </td>
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="9">No transactions available.</td>
-            </tr>
+            <tr><td colspan="9">No transactions found.</td></tr>
             {% endfor %}
         </tbody>
     </table>
+
 </div>
 
 <footer>

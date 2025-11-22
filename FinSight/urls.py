@@ -19,4 +19,6 @@ urlpatterns = [
     path('transactions/view/', views.viewTransactions, name='viewTransactions'),
     path('transactions/update/<int:id>/', views.updateTransaction, name='updateTransaction'),
     path('transactions/delete/<int:id>/', views.deleteTransaction, name='deleteTransaction'),
+     path('transactions/download-csv/', views.downloadTransactionsCSV, name='downloadTransactionsCSV'),
+
 ]

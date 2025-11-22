@@ -1,7 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-from django.utils import timezone
+from django.db.models import Sum
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.db.models import JSONField
+
+from decimal import Decimal
 
 class MainUser(AbstractUser):
     email = models.EmailField(unique=True)
@@ -31,9 +36,28 @@ class Portfolio(models.Model):
     riskTolerance = models.CharField(max_length=10, choices=RISK_CHOICES, default='Medium')
     investmentGoal = models.CharField(max_length=100, default="Long-term growth")
     createdAt = models.DateTimeField(auto_now_add=True)
+    diversification = JSONField(default=dict, blank=True) 
 
     def __str__(self):
         return f"{self.user.username}'s Portfolio"
+
+    def update_diversification(self):
+        """Compute portfolio stock allocation percentages."""
+        transactions = Transaction.objects.filter(portfolio=self)
+
+        stock_totals = {}
+        for t in transactions:
+            symbol = t.stockSymbol
+            qty = t.quantity if t.transactionType == "Buy" else -t.quantity
+            stock_totals[symbol] = stock_totals.get(symbol, 0) + qty
+
+        stock_totals = {k: v for k, v in stock_totals.items() if v > 0}
+        total_shares = sum(stock_totals.values())
+        if total_shares == 0:
+            self.diversification = {}
+        else:
+            self.diversification = {k: round((v / total_shares) * 100, 2) for k, v in stock_totals.items()}
+        self.save()
 
 
 class Transaction(models.Model):
@@ -68,3 +92,9 @@ class Transaction(models.Model):
             transactionType="Sell"
         ))
         return bought - sold
+
+
+@receiver(post_save, sender=Transaction)
+@receiver(post_delete, sender=Transaction)
+def update_portfolio_diversification(sender, instance, **kwargs):
+    instance.portfolio.update_diversification()

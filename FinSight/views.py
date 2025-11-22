@@ -4,6 +4,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .models import MainUser, Portfolio, Transaction
 from decimal import Decimal
+import csv
+from django.http import HttpResponse
 
 
 
@@ -122,10 +124,18 @@ def createPortfolio(request):
     return render(request, 'createPortfolio.html')
 
 
+
+
+
 @login_required
 def viewPortfolio(request):
     portfolio = get_object_or_404(Portfolio, user=request.user)
-    return render(request, 'viewPortfolio.html', {'portfolio': portfolio})
+    diversification = portfolio.diversification
+    return render(request, 'viewPortfolio.html', {
+        'portfolio': portfolio,
+        'diversification': diversification
+    })
+
 
 
 @login_required
@@ -221,12 +231,38 @@ def addTransaction(request):
 
 
 
-
 @login_required
 def viewTransactions(request):
     portfolio = get_object_or_404(Portfolio, user=request.user)
     transactions = Transaction.objects.filter(portfolio=portfolio).order_by('-date')
-    return render(request, 'viewTransactions.html', {'transactions': transactions})
+
+    transaction_type = request.GET.get('type')
+    stock_symbol = request.GET.get('symbol')
+    start_date = request.GET.get('start')
+    end_date = request.GET.get('end')
+
+    if transaction_type and transaction_type != "All":
+        transactions = transactions.filter(transactionType=transaction_type)
+
+    if stock_symbol:
+        transactions = transactions.filter(stockSymbol__icontains=stock_symbol)
+
+    if start_date:
+        transactions = transactions.filter(date__date__gte=start_date)
+
+    if end_date:
+        transactions = transactions.filter(date__date__lte=end_date)
+
+    context = {
+        'transactions': transactions,
+        'selected_type': transaction_type or "All",
+        'symbol': stock_symbol or "",
+        'start_date': start_date or "",
+        'end_date': end_date or "",
+    }
+
+    return render(request, 'viewTransactions.html', context)
+
 
 
 @login_required
@@ -254,3 +290,35 @@ def deleteTransaction(request, id):
         messages.success(request, "Transaction deleted successfully!")
         return redirect('viewTransactions')
     return render(request, 'deleteTransaction.html', {'transaction': transaction})
+
+
+
+
+
+@login_required
+def downloadTransactionsCSV(request):
+    portfolio = get_object_or_404(Portfolio, user=request.user)
+    transactions = Transaction.objects.filter(portfolio=portfolio).order_by('-date')
+
+    response = HttpResponse(content_type="text/csv")
+    response['Content-Disposition'] = 'attachment; filename="transaction_history.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Date", "Stock Symbol", "Stock Name", "Transaction Type",
+        "Quantity", "Price Per Share", "Total Price", "Note"
+    ])
+
+    for t in transactions:
+        writer.writerow([
+            t.date.strftime("%Y-%m-%d %H:%M"),
+            t.stockSymbol,
+            t.stockName,
+            t.transactionType,
+            t.quantity,
+            float(t.pricePerShare),
+            float(t.totalPrice),
+            t.note or ""
+        ])
+
+    return response
