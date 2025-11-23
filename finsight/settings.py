@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'FinSight',
-    "django_crontab",
 
 ]
 
@@ -135,11 +134,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 ALPHA_VANTAGE_API_KEY = "792J050IX3L8XNTD"
 
 
-CRONJOBS = [
-    ('0 6 * * *', 'FinSight.stock_api.fetch_and_cache_all_prices'),
-    ('0 18 * * *', 'FinSight.stock_api.fetch_and_cache_all_prices'),
- 
-]
 
 
 LOGGING = {

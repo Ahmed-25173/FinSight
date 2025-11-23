@@ -213,8 +213,6 @@
             <form method="post" action="{% url 'updatePortfolio' %}">
                 {% csrf_token %}
                 <input type="text" name="name" placeholder="Portfolio Name" value="{{ portfolio.name }}" required>
-                <input type="number" name="initialInvestment" placeholder="Initial Investment"
-                    value="{{ portfolio.initialInvestment }}" required>
                 <input type="number" name="cashBalance" placeholder="Cash Balance" value="{{ portfolio.cashBalance }}"
                     required>
                 <select name="riskTolerance" required>
