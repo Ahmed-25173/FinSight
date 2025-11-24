@@ -177,7 +177,6 @@ def get_stock_price(symbol):
 
 
 
-
 @login_required
 def viewPortfolio(request):
     portfolio = get_object_or_404(Portfolio, user=request.user)
@@ -190,14 +189,12 @@ def viewPortfolio(request):
     favorite_symbols = set(FavoriteStock.objects.filter(user=request.user)
                            .values_list('symbol', flat=True))
 
+    # Build stock_data with P&L
     for symbol, percent in diversification.items():
         owned_qty = Transaction.getOwnedShares(portfolio, symbol)
-
         current_price, updated_at = get_stock_price(symbol)
-
         if updated_at and (not last_cache_time or updated_at > last_cache_time):
             last_cache_time = updated_at
-
         avg_buy_price = Transaction.getAverageBuyPrice(portfolio, symbol)
         holding_value = owned_qty * current_price
         pnl = owned_qty * (current_price - avg_buy_price)
@@ -215,11 +212,17 @@ def viewPortfolio(request):
             'percent': percent
         })
 
+    # Determine top gainer and top loser
+    top_gainer = top_loser = None
+    if stock_data:
+        # Use full stock dicts for top_gainer and top_loser
+        top_gainer = max(stock_data, key=lambda x: x['pnl'])
+        top_loser = min(stock_data, key=lambda x: x['pnl'])
+
     # Compute top 5 holdings by value
     sorted_by_value = sorted(stock_data, key=lambda x: x['holding_value'], reverse=True)
     top5 = sorted_by_value[:5]
     top5_with_value_pct = []
-
     for item in top5:
         pct_by_value = (Decimal(item['holding_value']) / total_portfolio_value * 100) if total_portfolio_value > 0 else Decimal(0)
         top5_with_value_pct.append({
@@ -242,9 +245,12 @@ def viewPortfolio(request):
         'last_cache_time': last_cache_time,
         'top5': top5_with_value_pct,
         'favorite_symbols': favorite_symbols,
+        'top_gainer': top_gainer,
+        'top_loser': top_loser,
     }
 
     return render(request, 'viewPortfolio.html', context)
+
 
 
 
