@@ -19,6 +19,16 @@ urlpatterns = [
     path('transactions/view/', views.viewTransactions, name='viewTransactions'),
     path('transactions/update/<int:id>/', views.updateTransaction, name='updateTransaction'),
     path('transactions/delete/<int:id>/', views.deleteTransaction, name='deleteTransaction'),
-     path('transactions/download-csv/', views.downloadTransactionsCSV, name='downloadTransactionsCSV'),
+    path('transactions/download-csv/', views.downloadTransactionsCSV, name='downloadTransactionsCSV'),
+    path('favorite-stocks/', views.favoriteStocksPage, name='favoriteStocksPage'),
+    path('favorite-stocks/add/', views.addFavoriteStock, name='addFavoriteStock'),
+    path('favorite-stocks/remove/', views.removeFavoriteStock, name='removeFavoriteStock'),
+
+
 
 ]
+
+
+
+
+  

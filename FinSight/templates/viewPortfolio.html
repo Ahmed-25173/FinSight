@@ -15,15 +15,14 @@
     table th { background-color: #1e90ff; color: white; font-weight: 600; font-size: 0.875rem; }
     table tbody tr:hover { background-color: #0d1323; transition: all 0.2s; }
     .progress-bar { height: 0.5rem; border-radius: 9999px; background-color: #1e90ff; }
-    /* Top5 card specifics */
     .top5-card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.04); }
     .ticker { font-weight: 700; color: #e6f2ff; }
     .small-muted { color: #aab6c8; font-size: 0.85rem; }
+    .fav-button { background: transparent; border: none; cursor: pointer; font-size: 1.25rem; }
   </style>
 </head>
 <body class="bg-[#0a0f1c] text-gray-200 font-sans">
 
-<!-- NAVBAR -->
 <nav class="fixed w-full z-50 top-0 bg-transparent flex justify-between items-center px-8 py-4 shadow-sm">
   <div class="text-3xl md:text-4xl font-extrabold text-[#1e90ff] tracking-wide">FinSight</div>
   <div class="flex items-center space-x-3">
@@ -35,6 +34,7 @@
       <option value="{% url 'createPortfolio' %}">Create Portfolio</option>
     </select>
     <a href="{% url 'home' %}" class="bg-[#0b5ed7] hover:bg-[#3c83f6] rounded-lg px-4 py-2 transition">Home</a>
+    <a href="{% url 'favoriteStocksPage' %}" class="bg-[#0b5ed7] hover:bg-[#3c83f6] rounded-lg px-4 py-2 transition">Favorite Stocks</a>
     <a href="{% url 'update_profile' %}" class="bg-[#0b5ed7] hover:bg-[#3c83f6] rounded-lg px-4 py-2 transition">Update Profile</a>
     <a href="{% url 'changepassword' %}" class="bg-[#0b5ed7] hover:bg-[#3c83f6] rounded-lg px-4 py-2 transition">Change Password</a>
     <a href="{% url 'logout' %}" class="bg-[#0b5ed7] hover:bg-[#3c83f6] rounded-lg px-4 py-2 transition">Logout</a>
@@ -43,10 +43,8 @@
 
 <main class="pt-28 px-6 md:px-12 space-y-8">
 
-  <!-- PAGE TITLE -->
   <h1 class="text-3xl md:text-4xl font-extrabold text-[#1e90ff] mb-6">{{ portfolio.name }} Dashboard</h1>
 
-  <!-- TOP KPIs HERO SECTION -->
   <section class="grid md:grid-cols-5 gap-6">
     <div class="card-hover bg-[#101a2b] rounded-xl p-6 shadow-md border border-[#1a2238] flex flex-col items-start">
       <span class="text-gray-400 uppercase text-sm mb-2">Cash Balance</span>
@@ -78,7 +76,6 @@
     </div>
   </section>
 
-  <!-- TOP 5 HOLDINGS (Style C — Stock Ticker Cards) -->
   <section class="mt-2">
     <h2 class="text-xl font-bold text-[#1e90ff] mb-4">Top 5 Holdings</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -123,7 +120,6 @@
     </div>
   </section>
 
-  <!-- INVESTMENT GOALS & RISK -->
   <section class="grid md:grid-cols-2 gap-6">
     <div class="card-hover bg-[#101a2b] rounded-xl p-6 shadow-md border border-[#1a2238] flex flex-col">
       <span class="text-gray-400 uppercase text-sm mb-2">Investment Goal</span>
@@ -135,7 +131,7 @@
     </div>
   </section>
 
-  <!-- PORTFOLIO HOLDINGS TABLE -->
+  
   <section class="bg-[#101a2b] rounded-xl p-6 shadow-lg border border-[#1a2238] overflow-x-auto">
     <h2 class="text-xl font-bold text-[#1e90ff] mb-4">Portfolio Holdings</h2>
     {% if stock_data %}
@@ -155,7 +151,27 @@
         {% for stock in stock_data %}
         {% with stock_pnl=stock.pnl|floatformat:"2" %}
         <tr class="hover:bg-[#0d1323] transition-all">
-          <td>{{ stock.symbol }}</td>
+          <td class="flex items-center justify-center space-x-2">
+            <div>
+              {{ stock.symbol }}
+            </div>
+            <div>
+              {% if stock.symbol in favorite_symbols %}
+              <form action="{% url 'removeFavoriteStock' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="symbol" value="{{ stock.symbol }}">
+                <button class="fav-button text-yellow-400" title="Remove favorite">★</button>
+              </form>
+              {% else %}
+              <form action="{% url 'addFavoriteStock' %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="symbol" value="{{ stock.symbol }}">
+                <input type="hidden" name="name" value="{{ stock.symbol }}">
+                <button class="fav-button text-gray-400" title="Add favorite">☆</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
           <td>{{ stock.owned_qty }}</td>
           <td>${{ stock.avg_buy_price }}</td>
           <td>${{ stock.current_price }}</td>
@@ -178,7 +194,6 @@
     {% endif %}
   </section>
 
-  <!-- DESCRIPTION + DIVERSIFICATION -->
   <section class="grid md:grid-cols-2 gap-6">
     <div class="bg-[#101a2b] rounded-xl p-6 shadow-lg border border-[#1a2238] max-h-72 overflow-y-auto">
       <h3 class="text-xl font-bold text-[#1e90ff] mb-3">Portfolio Description</h3>
@@ -198,7 +213,6 @@
 
 </main>
 
-<!-- FOOTER -->
 <footer class="bg-gradient-to-r from-[#04070f] to-[#1a2238] text-gray-400 text-center py-6 text-sm border-t border-[#2c3550]">
   © 2025 FinSight. All rights reserved.
 </footer>

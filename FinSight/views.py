@@ -2,13 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .models import MainUser, Portfolio, Transaction, StockPriceCache
-from .utils import fetch_and_update_stock_price
+from .models import MainUser, Portfolio, Transaction, StockPriceCache, FavoriteStock
 from decimal import Decimal
 import csv
 from django.http import HttpResponse
 from datetime import timedelta
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 # ----------------------------
 # AUTHENTICATION VIEWS
@@ -126,6 +126,58 @@ def createPortfolio(request):
 
     return render(request, 'createPortfolio.html')
 
+from django.core.cache import cache
+from decimal import Decimal
+from .models import StockPriceCache
+import yfinance as yf
+from django.utils import timezone
+
+CACHE_TIMEOUT = 3600  # seconds = 1 hour
+
+def get_stock_price(symbol):
+    """
+    Get stock price from cache or fetch live if missing.
+    Updates the database cache as well.
+    Returns tuple: (price: Decimal, last_updated: datetime)
+    """
+    cache_key = f"stock_price_{symbol}"
+    cached = cache.get(cache_key)
+
+    if cached:
+        return cached  # (price, last_updated)
+
+    # Fetch live price
+    try:
+        stock = yf.Ticker(symbol)
+        live_price = stock.info.get('regularMarketPrice')
+        if live_price is None:
+            # fallback to database cache
+            db_cache = StockPriceCache.objects.filter(ticker=symbol).first()
+            if db_cache:
+                result = (Decimal(db_cache.last_price), db_cache.last_updated)
+                cache.set(cache_key, result, timeout=CACHE_TIMEOUT)
+                return result
+            return (Decimal(0), None)
+
+        live_price_decimal = Decimal(str(live_price))
+
+        # Update database cache
+        db_cache, _ = StockPriceCache.objects.get_or_create(ticker=symbol)
+        db_cache.last_price = live_price_decimal
+        db_cache.last_updated = timezone.now()
+        db_cache.save()
+
+        # Update Django cache
+        result = (live_price_decimal, db_cache.last_updated)
+        cache.set(cache_key, result, timeout=CACHE_TIMEOUT)
+        return result
+    except Exception as e:
+        print(f"Error fetching price for {symbol}: {e}")
+        return (Decimal(0), None)
+
+
+
+
 @login_required
 def viewPortfolio(request):
     portfolio = get_object_or_404(Portfolio, user=request.user)
@@ -134,28 +186,17 @@ def viewPortfolio(request):
     total_portfolio_value = Decimal(0)
     total_portfolio_pnl = Decimal(0)
     last_cache_time = None
-    cache_expiry = timedelta(hours=12)
+
+    favorite_symbols = set(FavoriteStock.objects.filter(user=request.user)
+                           .values_list('symbol', flat=True))
 
     for symbol, percent in diversification.items():
         owned_qty = Transaction.getOwnedShares(portfolio, symbol)
-        current_price = Decimal(0)
 
-        cache = StockPriceCache.objects.filter(ticker=symbol).first()
-        need_update = True if not cache else timezone.now() - cache.last_updated > cache_expiry
+        current_price, updated_at = get_stock_price(symbol)
 
-        if cache:
-            current_price = Decimal(cache.last_price)
-            # keep the most recent cache timestamp we encounter
-            if not last_cache_time or cache.last_updated > last_cache_time:
-                last_cache_time = cache.last_updated
-
-        if need_update:
-            live_price = fetch_and_update_stock_price(symbol)
-            if live_price is not None:
-                current_price = Decimal(live_price)
-                cache = StockPriceCache.objects.get(ticker=symbol)
-                if not last_cache_time or cache.last_updated > last_cache_time:
-                    last_cache_time = cache.last_updated
+        if updated_at and (not last_cache_time or updated_at > last_cache_time):
+            last_cache_time = updated_at
 
         avg_buy_price = Transaction.getAverageBuyPrice(portfolio, symbol)
         holding_value = owned_qty * current_price
@@ -174,17 +215,13 @@ def viewPortfolio(request):
             'percent': percent
         })
 
-    # compute top 5 holdings by holding value
+    # Compute top 5 holdings by value
     sorted_by_value = sorted(stock_data, key=lambda x: x['holding_value'], reverse=True)
     top5 = sorted_by_value[:5]
-
-    # compute percent by portfolio value for top5 (defensive: avoid div by zero)
     top5_with_value_pct = []
+
     for item in top5:
-        if total_portfolio_value > 0:
-            pct_by_value = (Decimal(item['holding_value']) / Decimal(total_portfolio_value)) * 100
-        else:
-            pct_by_value = Decimal(0)
+        pct_by_value = (Decimal(item['holding_value']) / total_portfolio_value * 100) if total_portfolio_value > 0 else Decimal(0)
         top5_with_value_pct.append({
             'symbol': item['symbol'],
             'qty': item['owned_qty'],
@@ -204,9 +241,11 @@ def viewPortfolio(request):
         'total_portfolio_pnl': round(total_portfolio_pnl, 2),
         'last_cache_time': last_cache_time,
         'top5': top5_with_value_pct,
+        'favorite_symbols': favorite_symbols,
     }
 
     return render(request, 'viewPortfolio.html', context)
+
 
 
 
@@ -237,6 +276,9 @@ def deletePortfolio(request):
     return render(request, 'deletePortfolio.html', {'portfolio': portfolio})
 
 
+
+
+
 @login_required
 def addTransaction(request):
     portfolio = get_object_or_404(Portfolio, user=request.user)
@@ -248,23 +290,35 @@ def addTransaction(request):
         shareQuant = int(request.POST.get('quantity'))
         note = request.POST.get('note', '')
 
-        pricePerShare = fetch_and_update_stock_price(stockSymbol)
-        if pricePerShare is None:
-            messages.error(request, f"Could not fetch live price for {stockSymbol}.")
+        # Get latest price using the new caching function
+        pricePerShare, last_updated = get_stock_price(stockSymbol)
+
+        if pricePerShare == 0:
+            messages.error(request, f"Could not fetch price for {stockSymbol}.")
             return redirect('addTransaction')
 
         totalPrice = shareQuant * Decimal(pricePerShare)
 
+        # Validate Sell transaction
         if transactionType == "Sell":
             ownedShares = Transaction.getOwnedShares(portfolio, stockSymbol)
             if ownedShares <= 0 or shareQuant > ownedShares:
-                messages.error(request, f"Cannot sell {shareQuant} shares of {stockSymbol}. You own {ownedShares}.")
-                return redirect('addTransaction')
-        elif transactionType == "Buy":
-            if totalPrice > portfolio.cashBalance:
-                messages.error(request, f"Insufficient cash balance to buy {shareQuant} shares of {stockSymbol}.")
+                messages.error(
+                    request,
+                    f"Cannot sell {shareQuant} shares of {stockSymbol}. You own {ownedShares}."
+                )
                 return redirect('addTransaction')
 
+        # Validate Buy transaction
+        elif transactionType == "Buy":
+            if totalPrice > portfolio.cashBalance:
+                messages.error(
+                    request,
+                    f"Insufficient cash balance to buy {shareQuant} shares of {stockSymbol}."
+                )
+                return redirect('addTransaction')
+
+        # Create transaction
         Transaction.objects.create(
             portfolio=portfolio,
             stockSymbol=stockSymbol,
@@ -276,6 +330,7 @@ def addTransaction(request):
             note=note
         )
 
+        # Update portfolio cash balance
         portfolio.cashBalance += -totalPrice if transactionType == "Buy" else totalPrice
         portfolio.save()
 
@@ -283,6 +338,10 @@ def addTransaction(request):
         return redirect('viewTransactions')
 
     return render(request, 'addTransaction.html', {'portfolio': portfolio})
+
+
+
+
 
 
 @login_required
@@ -369,3 +428,106 @@ def downloadTransactionsCSV(request):
         ])
 
     return response
+
+
+@login_required
+def favoriteStocksPage(request):
+    """
+    Show the user's favorite stocks with cached or live prices.
+    """
+    favorites = FavoriteStock.objects.filter(user=request.user).order_by('-added_at')
+    stock_data = []
+    last_cache_time = None
+    cache_expiry = timedelta(hours=12)
+    total_value = Decimal(0)
+
+    for fav in favorites:
+        symbol = fav.symbol
+        name = fav.name or ""
+        current_price = Decimal(0)
+        cache = StockPriceCache.objects.filter(ticker=symbol).first()
+        need_update = True if not cache else timezone.now() - cache.last_updated > cache_expiry
+
+        if cache:
+            current_price = Decimal(cache.last_price)
+            if not last_cache_time or cache.last_updated > last_cache_time:
+                last_cache_time = cache.last_updated
+
+        if need_update:
+            live_price = fetch_and_update_stock_price(symbol)
+            if live_price is not None:
+                current_price = Decimal(live_price)
+                cache = StockPriceCache.objects.get(ticker=symbol)
+                if not last_cache_time or cache.last_updated > last_cache_time:
+                    last_cache_time = cache.last_updated
+
+        # optional: compute user's owned shares in portfolio(s) for this symbol
+        # We'll sum across all portfolios the user owns (if any)
+        owned_qty = 0
+        # If user has a portfolio we use it; otherwise 0
+        try:
+            portfolio = request.user.portfolio
+            owned_qty = Transaction.getOwnedShares(portfolio, symbol)
+        except Portfolio.DoesNotExist:
+            owned_qty = 0
+
+        value = owned_qty * current_price
+        total_value += Decimal(value)
+
+        stock_data.append({
+            'symbol': symbol,
+            'name': name,
+            'current_price': round(current_price, 2),
+            'owned_qty': owned_qty,
+            'value': round(value, 2),
+        })
+
+    context = {
+        'favorites': favorites,
+        'stock_data': stock_data,
+        'last_cache_time': last_cache_time,
+        'total_value': round(total_value, 2),
+    }
+    return render(request, 'favorite_stocks.html', context)
+
+@require_POST
+@login_required
+def addFavoriteStock(request):
+    """
+    Add a symbol to the user's favorites. Expects POST with 'symbol' and optional 'name'.
+    """
+    symbol = request.POST.get('symbol', '').upper().strip()
+    name = request.POST.get('name', '').strip()
+    if not symbol:
+        messages.error(request, "No symbol provided.")
+        return redirect(request.META.get('HTTP_REFERER', 'favoriteStocksPage'))
+
+    fav, created = FavoriteStock.objects.get_or_create(user=request.user, symbol=symbol, defaults={'name': name})
+    if created:
+        messages.success(request, f"{symbol} added to your favorites.")
+    else:
+        messages.info(request, f"{symbol} is already in your favorites.")
+    return redirect(request.META.get('HTTP_REFERER', 'favoriteStocksPage'))
+
+@require_POST
+@login_required
+def removeFavoriteStock(request):
+    """
+    Remove a symbol from the user's favorites. Expects POST with 'symbol'.
+    """
+    symbol = request.POST.get('symbol', '').upper().strip()
+    if not symbol:
+        messages.error(request, "No symbol provided.")
+        return redirect(request.META.get('HTTP_REFERER', 'favoriteStocksPage'))
+
+    deleted, _ = FavoriteStock.objects.filter(user=request.user, symbol=symbol).delete()
+    if deleted:
+        messages.success(request, f"{symbol} removed from favorites.")
+    else:
+        messages.info(request, f"{symbol} wasn't in your favorites.")
+    return redirect(request.META.get('HTTP_REFERER', 'favoriteStocksPage'))
+
+from decimal import Decimal
+from .models import StockPriceCache
+
+
